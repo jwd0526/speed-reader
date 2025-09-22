@@ -23,7 +23,7 @@ export const Slider: React.FC<SliderProps> = ({
   return (
     <div className={clsx('w-full', className)}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="text-white">
           {label}: {value}
         </label>
       )}
@@ -34,9 +34,9 @@ export const Slider: React.FC<SliderProps> = ({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+        className="w-full slider"
       />
-      <div className="flex justify-between text-xs text-gray-500 mt-1">
+      <div className="flex justify-between text-white">
         <span>{min}</span>
         <span>{max}</span>
       </div>

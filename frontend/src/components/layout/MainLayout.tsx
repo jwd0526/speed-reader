@@ -10,11 +10,11 @@ const MainLayout: React.FC = () => {
         <div className="flex-[3]">
           <RSVPPanel/>
         </div>
-        <div className="flex-1 bg-gray-50">
+        <div className="flex-1">
           <OutlinePanel/>
         </div>
       </div>
-      <div className="h-2/5 border-t border-gray-200">
+      <div className="h-2/5 border-t border-white">
         <DocumentPanel/>
       </div>
     </div>

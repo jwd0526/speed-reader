@@ -37,21 +37,21 @@ export const Modal: React.FC<ModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/80 flex items-center justify-center p-4"
       onClick={onClose} // Close on backdrop click
     >
       <div 
         className={clsx(
-          'bg-white rounded-lg shadow-lg max-w-lg w-full p-6 max-h-[90vh] overflow-auto',
+          'bg-gray-900 border border-white p-4 w-full max-w-lg',
           className
         )}
         onClick={(e) => e.stopPropagation()} // Prevent close on content click
       >
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+          <h2 className="text-white">{title}</h2>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            className="text-white"
           >
             ×
           </button>

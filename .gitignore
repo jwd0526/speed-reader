@@ -160,3 +160,5 @@ config.local.*
 *.njsproj
 *.sln
 *.sw?
+current_work.txt
+doc.sh
