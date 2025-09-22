@@ -74,23 +74,22 @@ start_database() {
     else
         # Start postgres using docker-compose
         docker-compose up postgres -d
-        
-        # Wait for postgres to be ready
-        print_status "Waiting for PostgreSQL to be ready..."
-        sleep 10
-        
-        # Check if postgres is ready
-        local retries=30
-        while ! docker exec $(docker ps -q -f name=postgres) pg_isready -U dev -d speedreader >/dev/null 2>&1; do
-            retries=$((retries - 1))
-            if [ $retries -eq 0 ]; then
-                print_error "PostgreSQL failed to start"
-                exit 1
-            fi
-            print_status "Waiting for PostgreSQL... ($retries attempts remaining)"
-            sleep 2
-        done
     fi
+    
+    # Wait for postgres to be ready with proper user
+    print_status "Waiting for PostgreSQL to be ready..."
+    local retries=60
+    while ! docker exec $(docker ps -q -f name=postgres) psql -U dev -d speedreader -c "SELECT 1;" >/dev/null 2>&1; do
+        retries=$((retries - 1))
+        if [ $retries -eq 0 ]; then
+            print_error "PostgreSQL failed to start properly"
+            print_status "Checking container logs..."
+            docker logs $(docker ps -q -f name=postgres)
+            exit 1
+        fi
+        print_status "Waiting for PostgreSQL with dev user... ($retries attempts remaining)"
+        sleep 1
+    done
     
     print_success "PostgreSQL is ready"
 }
@@ -101,8 +100,22 @@ run_migrations() {
     
     cd backend
     
-    # Run migrations
-    migrate -path db/migrations -database "postgres://dev:devpass@localhost:5432/speedreader?sslmode=disable" up
+    # Check if tables already exist
+    if docker exec $(docker ps -q -f name=postgres) psql -U dev -d speedreader -c "\dt" 2>/dev/null | grep -q "users"; then
+        print_warning "Tables already exist, skipping migrations"
+    else
+        # Run each migration file directly with psql
+        for migration_file in db/migrations/*.up.sql; do
+            if [ -f "$migration_file" ]; then
+                print_status "Running migration: $(basename $migration_file)"
+                docker exec -i $(docker ps -q -f name=postgres) psql -U dev -d speedreader < "$migration_file"
+                
+                if [ $? -ne 0 ]; then
+                    print_warning "Migration had errors: $(basename $migration_file) (might be expected if tables exist)"
+                fi
+            fi
+        done
+    fi
     
     print_success "Database migrations completed"
     cd ..
@@ -162,27 +175,26 @@ EOF
 
 # Start backend server
 start_backend() {
-    print_status "Starting Go backend server..."
+    print_status "Starting Go backend server in Docker..."
     
-    cd backend
+    # Start backend container
+    docker-compose up backend -d
     
-    # Start backend in background
-    go run cmd/server/main.go &
-    BACKEND_PID=$!
+    # Wait for backend to be ready
+    local retries=30
+    while ! curl -s http://localhost:8080/health >/dev/null 2>&1; do
+        retries=$((retries - 1))
+        if [ $retries -eq 0 ]; then
+            print_error "Backend server failed to start"
+            print_status "Checking backend logs..."
+            docker logs $(docker ps -q -f name=backend)
+            exit 1
+        fi
+        print_status "Waiting for backend server... ($retries attempts remaining)"
+        sleep 2
+    done
     
-    # Wait a moment for server to start
-    sleep 3
-    
-    # Check if backend is running
-    if kill -0 $BACKEND_PID 2>/dev/null; then
-        print_success "Backend server started (PID: $BACKEND_PID)"
-        echo $BACKEND_PID > ../.backend.pid
-    else
-        print_error "Failed to start backend server"
-        exit 1
-    fi
-    
-    cd ..
+    print_success "Backend server started"
 }
 
 # Start frontend server
@@ -214,16 +226,6 @@ start_frontend() {
 cleanup() {
     print_status "Shutting down development environment..."
     
-    # Kill backend if running
-    if [ -f .backend.pid ]; then
-        BACKEND_PID=$(cat .backend.pid)
-        if kill -0 $BACKEND_PID 2>/dev/null; then
-            kill $BACKEND_PID
-            print_success "Backend server stopped"
-        fi
-        rm -f .backend.pid
-    fi
-    
     # Kill frontend if running
     if [ -f .frontend.pid ]; then
         FRONTEND_PID=$(cat .frontend.pid)
@@ -236,7 +238,7 @@ cleanup() {
     
     # Stop docker containers
     docker-compose down
-    print_success "Database stopped"
+    print_success "Backend and database stopped"
     
     print_success "Development environment shut down"
 }

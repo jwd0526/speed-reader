@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: devpass
+      POSTGRES_DB: speedreader
+      POSTGRES_HOST_AUTH_METHOD: md5
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev -d speedreader"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://dev:devpass@postgres:5432/speedreader?sslmode=disable
+      JWT_SECRET: dev-jwt-secret-change-in-production
+      GIN_MODE: debug
+    volumes:
+      - ./backend:/app
+    working_dir: /app
+    command: go run cmd/server/main.go
+
+volumes:
+  postgres_data:
