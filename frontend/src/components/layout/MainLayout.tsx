@@ -1,5 +1,5 @@
 import React from 'react'
-import RSVPPanel from "./RSVPPanel"
+import RSVPPanel from "../layout/RSVPPanel"
 import DocumentPanel from './DocumentPanel'
 import OutlinePanel from './OutlinePanel'
 
@@ -8,7 +8,7 @@ const MainLayout: React.FC = () => {
     <div className="h-screen flex flex-col">
       <div className="flex-1 flex">
         <div className="flex-[3]">
-          <RSVPPanel/>
+          <RSVPPanel />
         </div>
         <div className="flex-1">
           <OutlinePanel/>

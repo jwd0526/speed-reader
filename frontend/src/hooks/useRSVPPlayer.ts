@@ -1,5 +1,7 @@
+// src/hooks/useRSVPPlayer.ts
 import { useEffect, useRef } from 'react'
 import { useReaderStore } from '../stores/readerStore'
+import { calculateDisplayTime } from '../utils/wordTiming'
 
 export const useRSVPPlayer = () => {
   const { 
@@ -9,32 +11,38 @@ export const useRSVPPlayer = () => {
     isPlaying,
     skipWords, 
     play, 
-    pause 
+    pause,
+    getCurrentWordContext
   } = useReaderStore()
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     if (isPlaying && documentContent) {
-      const intervalMs = 60000 / readingSpeed
+      const currentWord = documentContent.words[currentWordIndex];
       
-      intervalRef.current = setInterval(() => {
-        if (currentWordIndex >= documentContent.words.length - 1) {
-          pause()
-        } else {
-          skipWords(1)
-        }
-      }, intervalMs)
+      if (currentWord) {
+        // Calculate dynamic display time for current word
+        const displayTime = calculateDisplayTime(currentWord.word, readingSpeed);
+        
+        intervalRef.current = setTimeout(() => {
+          if (currentWordIndex >= documentContent.words.length - 1) {
+            pause()
+          } else {
+            skipWords(1)
+          }
+        }, displayTime);
+      }
     } else {
       if (intervalRef.current) {
-        clearInterval(intervalRef.current)
+        clearTimeout(intervalRef.current)
         intervalRef.current = null
       }
     }
 
     return () => {
       if (intervalRef.current) {
-        clearInterval(intervalRef.current)
+        clearTimeout(intervalRef.current)
       }
     }
   }, [isPlaying, readingSpeed, currentWordIndex, documentContent, skipWords, pause])
@@ -48,6 +56,7 @@ export const useRSVPPlayer = () => {
     play,
     pause,
     togglePlay: () => isPlaying ? pause() : play(),
-    setSpeed: useReaderStore.getState().setSpeed
+    setSpeed: useReaderStore.getState().setSpeed,
+    getCurrentWordContext
   }
 }

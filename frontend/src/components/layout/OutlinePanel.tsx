@@ -1,4 +1,3 @@
-// src/components/layout/OutlinePanel.tsx
 import React from 'react'
 
 
